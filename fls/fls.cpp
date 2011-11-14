@@ -64,7 +64,7 @@ std::string masquerade(std::string input)
   return output;
 }
 
-std::string print_path( filesystem::path path )
+std::string print_file( File file )
 {
   std::string work = options.format;
   for (size_t pos = 0; work[pos] != '\0'; pos++)
@@ -76,7 +76,7 @@ std::string print_path( filesystem::path path )
 	    {
 	    case 'n':
 	      {
-		work.insert(pos - 1, masquerade(path.string()));
+		work.insert(pos - 1, masquerade(file.path.string()));
 		break;
 	      }
 	    case 'N':
