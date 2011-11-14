@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 {
   try
     {
-      program_options::options_description generic("Generic Options");
+      program_options::options_description generic("Usage: fls [-x GLOB] [-f FMT] DIR...");
       generic.add_options()
 	("help,h", "print this message")
 	("format,f", program_options::value<std::string>(),
@@ -38,12 +38,14 @@ int main(int argc, char* argv[])
 %F indicator (*/=|)  %_ column alignment")
 	("sort,s", program_options::value<std::string>(),
 	 "sort the files in order of given following arguments\n\
- n filename   b basename    s size\n\
+n filename   b basename    s size\n\
 u user       U uid         g group\n\
 i inode      l number of hardlinks\n\
 e extension  E name without extension\n\
 a atime      m mtime       c ctime")
-	("max-depth,m", program_options::value<int>(), "max depth (number of / in pathname allowed")
+	("reverse,r", "reverse sort order")
+	("max-depth,m", program_options::value<int>(),
+	 "max depth (number of / in pathname allowed")
 	("exclude,x", program_options::value<std::string>(),
 	 "exclude GLOB (** for recursive *)");
 
@@ -53,11 +55,6 @@ a atime      m mtime       c ctime")
 
       program_options::options_description cmdline_options;
       cmdline_options.add(generic).add(hidden);
-
-      // TODO Remove ':' from line
-      program_options::options_description visible
-	("Usage: fls [-x GLOB] [-f FMT] DIR");
-      visible.add(generic);
 
       program_options::positional_options_description posdesc;
       posdesc.add("file", -1);
@@ -69,7 +66,7 @@ a atime      m mtime       c ctime")
       program_options::notify(vm);
 
       if (vm.count("help")) {
-	std::cout << visible << std::endl;
+	std::cout << generic << std::endl;
 	return 1;
       }
 
