@@ -6,13 +6,20 @@ using namespace boost;
 
 void list_content( filesystem::path p, int sublevels )
 {
-  for ( filesystem::directory_iterator dir(p);
-	dir != filesystem::directory_iterator(); dir++ )
+  try
     {
-      std::cout << *dir << std::endl;
-      if ( filesystem::is_directory(*dir) )
-	if ( sublevels )
-	  list_content( *dir, sublevels - 1 );
+      for ( filesystem::directory_iterator dir(p);
+	    dir != filesystem::directory_iterator(); dir++ )
+	{
+	  std::cout << *dir << std::endl;
+	  if ( filesystem::is_directory(*dir) )
+	    if ( sublevels )
+	      list_content( *dir, sublevels - 1 );
+	}
+    }
+  catch (const filesystem::filesystem_error& ex)
+    {
+      std::cerr << p << ": permission denied" << std::endl;
     }
 }
 
@@ -46,10 +53,8 @@ u user       U uid         g group\n\
 i inode      l number of hardlinks\n\
 e extension  E name without extension\n\
 a atime      m mtime       c ctime")
-	("reverse,r", "reverse sort order")
-	("max-depth,m",
-	 program_options::value<int>(&max_depth),
-	 "max depth")
+	("reverse,r", "reverse display order")
+	("max-depth,m", program_options::value<int>(&max_depth), "max depth")
 	("exclude,x", program_options::value<std::string>(),
 	 "exclude GLOB (** for recursive *)");
 
@@ -78,6 +83,7 @@ a atime      m mtime       c ctime")
       if (vm.count("sort"))
 	{
 	  std::cout << "sorted check" << std::endl;
+	  return 0;
 	}
       else // not sorted
 	{
@@ -96,9 +102,10 @@ a atime      m mtime       c ctime")
 	    return 1;
 	}
     }
-catch( std::exception& e )
+  catch( std::exception& e )
     {
       std::cerr << e.what() << std::endl;
       return 1;
     }
+
 }
