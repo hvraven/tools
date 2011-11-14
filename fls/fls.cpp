@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
@@ -7,6 +8,38 @@ using namespace boost;
 struct Option_Error: public std::exception
 {
   Option_Error() {};
+};
+
+struct File
+{
+  filesystem::path path;
+  std::string user;
+  std::string group;
+  unsigned int uid;
+  unsigned int gid;
+  unsigned int size;
+  unsigned int perm;
+  unsigned int inode;
+  unsigned int hardlinks;
+  unsigned int atime;
+  unsigned int mtime;
+  unsigned int ctime;
+
+  File( filesystem::path path_)
+    : path(path_),
+      user(),
+      group(),
+      uid(),
+      gid(),
+      size(),
+      perm(),
+      inode(),
+      hardlinks(),
+      atime(),
+      mtime(),
+      ctime()
+  {
+  }
 };
 
 struct Options
@@ -68,7 +101,9 @@ void set_stats(const char& c)
   switch (c) // fuuuu...
     {
     case 'n':
+    case 'N':
     case 'b':
+    case 'B':
     case 'e':
     case 'E':
       break;
@@ -158,9 +193,77 @@ void read_format()
       }
 }
 
-void display_path( filesystem::path path )
+std::string masquerade(std::string input)
 {
-  std::cout << path << std::endl;
+  std::string output;
+  for (unsigned int i = 0; input[i] != '\0'; i++)
+    switch ( input[i] )
+      {
+      case '~':
+      case '\\':
+      case ' ':
+      case '#':
+      case '"':
+      case '\'':
+	output += '\\';
+      default:
+	output += input[i];
+      }
+  return output;
+}
+
+std::string print_path( filesystem::path path )
+{
+  std::string work = options.format;
+  for (size_t pos = 0; work[pos] != '\0'; pos++)
+    {
+      if ( work[pos] == '%' )
+	{
+	  work.erase(pos, 2);
+	  switch ( work[++pos] )
+	    {
+	    case 'n':
+	      {
+		work.insert(pos - 1, masquerade(path.string()));
+		break;
+	      }
+	    case 'N':
+	      {
+		work.insert(pos - 1, path.string());
+		break;
+	      }
+	    case 'b':
+	      {
+		std::string temp = path.string();
+		size_t last = 0;
+		for (size_t pos2 = 0; temp[pos2] != '\0'; pos2++)
+		  if (temp[pos2] == '/')
+		    last = pos2;
+		temp.erase(0, last + 1);
+		work.insert(pos - 1, masquerade(temp));
+		break;
+	      }
+	    case 'B':
+	      {
+		std::string temp = path.string();
+		size_t last = 0;
+		for (size_t pos2 = 0; temp[pos2] != '\0'; pos2++)
+		  if (temp[pos2] == '/')
+		    last = pos2;
+		temp.erase(0, last + 1);
+		work.insert(pos - 1, temp);
+		break;
+	      }
+	    }
+	}
+    }
+
+  return work;
+}
+
+inline void display_path( filesystem::path path )
+{
+  std::cout << print_path( path ) << std::endl;
 }
 
 void list_content_unsorted( filesystem::path p, int sublevels )
@@ -237,7 +340,7 @@ a atime      m mtime       c ctime")
 			     vm);
       program_options::notify(vm);
 
-      if (vm.count("help"))
+      if ( vm.count("help") || argc == 0 )
 	{
 	  std::cout << generic << std::endl;
 	  return 1;
@@ -250,8 +353,16 @@ a atime      m mtime       c ctime")
 	options.sorted = true;
 
       /* reading options to structures */
-      read_sort();
-      read_format();
+      try
+	{
+	  read_sort();
+	  read_format();
+	}
+      catch( Option_Error e )
+	{
+	  std::cerr << "Invalid arguments" << std::endl;
+	  return 1;
+	}
 
       /* splitting at begin for optimization */
       if (vm.count("sort"))
