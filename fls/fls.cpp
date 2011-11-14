@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 {
   try
     {
-      int max_depth;
+      int max_depth = -1;
 
       program_options::options_description generic("Usage: fls [-x GLOB] [-f FMT] DIR...");
       generic.add_options()
@@ -48,7 +48,7 @@ e extension  E name without extension\n\
 a atime      m mtime       c ctime")
 	("reverse,r", "reverse sort order")
 	("max-depth,m",
-	 program_options::value<int>(&max_depth)->default_value(-1),
+	 program_options::value<int>(&max_depth),
 	 "max depth")
 	("exclude,x", program_options::value<std::string>(),
 	 "exclude GLOB (** for recursive *)");
