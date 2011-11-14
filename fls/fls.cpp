@@ -16,6 +16,18 @@ struct File
 {
   filesystem::path path;
   struct stat stat;
+
+  File()
+    : path(),
+      stat()
+  {
+  }
+
+  File(filesystem::path path_, struct stat stat_)
+    : path(path_),
+      stat(stat_)
+  {
+  }
 };
 
 struct Options
@@ -81,12 +93,12 @@ std::string print_file( File file )
 	      }
 	    case 'N':
 	      {
-		work.insert(pos - 1, path.string());
+		work.insert(pos - 1, file.path.string());
 		break;
 	      }
 	    case 'b':
 	      {
-		std::string temp = path.string();
+		std::string temp = file.path.string();
 		size_t last = 0;
 		for (size_t pos2 = 0; temp[pos2] != '\0'; pos2++)
 		  if (temp[pos2] == '/')
@@ -97,7 +109,7 @@ std::string print_file( File file )
 	      }
 	    case 'B':
 	      {
-		std::string temp = path.string();
+		std::string temp = file.path.string();
 		size_t last = 0;
 		for (size_t pos2 = 0; temp[pos2] != '\0'; pos2++)
 		  if (temp[pos2] == '/')
@@ -113,9 +125,9 @@ std::string print_file( File file )
   return work;
 }
 
-inline void display_path( filesystem::path path )
+inline void display_file( File file )
 {
-  std::cout << print_path( path ) << std::endl;
+  std::cout << print_file( file ) << std::endl;
 }
 
 void list_content_unsorted( filesystem::path p, int sublevels )
@@ -125,7 +137,9 @@ void list_content_unsorted( filesystem::path p, int sublevels )
       for ( filesystem::directory_iterator dir(p);
 	    dir != filesystem::directory_iterator(); dir++ )
 	{
-	  display_path(dir->path());
+	  struct stat tempstat;
+	  stat( dir->path().c_str(), &tempstat );
+	  display_file( File(dir->path(), tempstat) );
 	  if ( filesystem::is_directory(*dir) )
 	    if ( sublevels )
 	      list_content_unsorted( *dir, sublevels - 1 );
@@ -226,7 +240,9 @@ a atime      m mtime       c ctime")
 	  filesystem::path p = vm["file"].as<std::string>();
 	  if ( filesystem::is_regular_file( p ) )
 	    {
-	      display_path( p );
+	      struct stat tempstat;
+	      stat(p.c_str(), &tempstat);
+	      display_file( File(p,tempstat) );
 	      return 0;
 	    }
 	  else if ( filesystem::is_directory(p) )
