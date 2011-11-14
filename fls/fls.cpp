@@ -9,13 +9,17 @@ struct Options
   bool quiet;
   int max_depth;
   std::string format;
+  bool sorted;
   std::string sort;
+  std::string exclude;
 
   Options()
     : quiet(false),
       max_depth(-1),
       format(),
-      sort()
+      sorted(false),
+      sort(),
+      exclude()
   {
   }
 };
@@ -54,7 +58,8 @@ int main(int argc, char* argv[])
       program_options::options_description generic("Usage: fls [-x GLOB] [-f FMT] DIR...");
       generic.add_options()
 	("help,h", "print this message")
-	("format,f", program_options::value<std::string>(),
+	("format,f",
+	 program_options::value<std::string>(&options.format),
 	 "output format\n\
 %n filename      %N raw filename\n\
 %b basename      %B raw basename\n\
@@ -68,7 +73,8 @@ int main(int argc, char* argv[])
 %m iso mtime     %M epoch mtime\n\
 %c iso ctime     %C epoch ctime\n\
 %F indicator (*/=|)  %_ column alignment")
-	("sort,s", program_options::value<std::string>(),
+	("sort,s",
+	 program_options::value<std::string>(&options.sort),
 	 "sort the files in order of given following arguments\n\
 n filename   b basename    s size\n\
 u user       U uid         g group\n\
@@ -78,7 +84,8 @@ a atime      m mtime       c ctime")
 	("reverse,r", "reverse display order")
 	("max-depth,m", program_options::value<int>(&options.max_depth),
 	 "max depth")
-	("exclude,x", program_options::value<std::string>(),
+	("exclude,x",
+	 program_options::value<std::string>(&options.exclude),
 	 "exclude GLOB (** for recursive *)")
 	("quiet,q", "don't show trivial error messages");
 
@@ -106,6 +113,9 @@ a atime      m mtime       c ctime")
 
       if (vm.count("quiet"))
 	options.quiet = true;
+
+      if (vm.count("sort"))
+	options.sorted = true;
 
       /* splitting at begin for optimization */
       if (vm.count("sort"))
