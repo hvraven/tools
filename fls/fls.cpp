@@ -4,6 +4,11 @@
 
 using namespace boost;
 
+struct Option_Error: public std::exception
+{
+  Option_Error() {};
+};
+
 struct Options
 {
   bool quiet;
@@ -13,10 +18,42 @@ struct Options
   std::string sort;
   std::string exclude;
 
+  struct Stat
+  {
+    bool user;
+    bool uid;
+    bool group;
+    bool gid;
+    bool size;
+    bool perm;
+    bool inode;
+    bool hardlinks;
+    bool atime;
+    bool mtime;
+    bool ctime;
+
+    Stat()
+      : user(false),
+	uid(false),
+	group(false),
+	gid(false),
+	size(false),
+	perm(false),
+	inode(false),
+	hardlinks(false),
+	atime(false),
+	mtime(false),
+	ctime(false)
+    {
+    }
+  };
+
+  Stat stat;
+
   Options()
     : quiet(false),
       max_depth(-1),
-      format(),
+      format("%p %l %u %g %h %M %N"),
       sorted(false),
       sort(),
       exclude()
@@ -25,6 +62,101 @@ struct Options
 };
 
 Options options;
+
+void set_stats(const char& c)
+{
+  switch (c) // fuuuu...
+    {
+    case 'n':
+    case 'b':
+    case 'e':
+    case 'E':
+      break;
+    case 's':
+      {
+	options.stat.size = true;
+	break;
+      }
+    case 'u':
+      {
+	options.stat.user = true;
+	break;
+      }
+    case 'U':
+      {
+	options.stat.uid = true;
+	break;
+      }
+    case 'g':
+      {
+	options.stat.group = true;
+	break;
+      }
+    case 'G':
+      {
+	options.stat.gid = true;
+	break;
+      }
+    case 'p':
+    case 'P':
+      {
+	options.stat.perm = true;
+	break;
+      }
+    case 'i':
+      {
+	options.stat.inode = true;
+	break;
+      }
+    case 'l':
+      {
+	options.stat.hardlinks = true;
+	break;
+      }
+    case 'a':
+    case 'A':
+      {
+	options.stat.atime = true;
+	break;
+      }
+    case 'm':
+    case 'M':
+      {
+	options.stat.mtime = true;
+	break;
+      }
+    case 'c':
+    case 'C':
+      {
+	options.stat.ctime = true;
+	break;
+      }
+    default:
+      throw Option_Error();
+    }
+}
+
+void read_sort()
+{
+  for ( std::string::const_iterator it = options.sort.begin();
+	it != options.sort.end(); it++ )
+    set_stats(*it);
+
+  // TODO building sort tree
+}
+
+void read_format()
+{
+  for ( std::string::const_iterator it = options.format.begin();
+	it != options.format.end(); it++ )
+    if ( *it == '%' )
+      {
+	if ( ++it != options.format.end() )
+	  set_stats( *it );
+	else
+	  throw Option_Error();
+      }
+}
 
 void display_path( filesystem::path path )
 {
@@ -66,7 +198,7 @@ int main(int argc, char* argv[])
 %u user          %u uid\n\
 %g group         %G gid\n\
 %s size          %h human size\n\
-%p modestring    %P octal mode\n\
+%p permstring    %P octal perm\n\
 %i inode number  %l number of hardlinks\n\
 %e extension     %E name without extension\n\
 %a iso atime     %A epoch atime\n\
@@ -116,6 +248,10 @@ a atime      m mtime       c ctime")
 
       if (vm.count("sort"))
 	options.sorted = true;
+
+      /* reading options to structures */
+      read_sort();
+      read_format();
 
       /* splitting at begin for optimization */
       if (vm.count("sort"))
