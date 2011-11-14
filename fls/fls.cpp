@@ -206,7 +206,7 @@ a atime      m mtime       c ctime")
 			     vm);
       program_options::notify(vm);
 
-      if ( vm.count("help") || argc == 0 )
+      if ( vm.count("help") || argc == 1 )
 	{
 	  std::cout << generic << std::endl;
 	  return 1;
