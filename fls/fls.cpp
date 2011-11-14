@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 using namespace boost;
 
@@ -13,33 +15,7 @@ struct Option_Error: public std::exception
 struct File
 {
   filesystem::path path;
-  std::string user;
-  std::string group;
-  unsigned int uid;
-  unsigned int gid;
-  unsigned int size;
-  unsigned int perm;
-  unsigned int inode;
-  unsigned int hardlinks;
-  unsigned int atime;
-  unsigned int mtime;
-  unsigned int ctime;
-
-  File( filesystem::path path_)
-    : path(path_),
-      user(),
-      group(),
-      uid(),
-      gid(),
-      size(),
-      perm(),
-      inode(),
-      hardlinks(),
-      atime(),
-      mtime(),
-      ctime()
-  {
-  }
+  struct stat stat;
 };
 
 struct Options
@@ -50,38 +26,6 @@ struct Options
   bool sorted;
   std::string sort;
   std::string exclude;
-
-  struct Stat
-  {
-    bool user;
-    bool uid;
-    bool group;
-    bool gid;
-    bool size;
-    bool perm;
-    bool inode;
-    bool hardlinks;
-    bool atime;
-    bool mtime;
-    bool ctime;
-
-    Stat()
-      : user(false),
-	uid(false),
-	group(false),
-	gid(false),
-	size(false),
-	perm(false),
-	inode(false),
-	hardlinks(false),
-	atime(false),
-	mtime(false),
-	ctime(false)
-    {
-    }
-  };
-
-  Stat stat;
 
   Options()
     : quiet(false),
@@ -96,101 +40,9 @@ struct Options
 
 Options options;
 
-void set_stats(const char& c)
-{
-  switch (c) // fuuuu...
-    {
-    case 'n':
-    case 'N':
-    case 'b':
-    case 'B':
-    case 'e':
-    case 'E':
-      break;
-    case 's':
-      {
-	options.stat.size = true;
-	break;
-      }
-    case 'u':
-      {
-	options.stat.user = true;
-	break;
-      }
-    case 'U':
-      {
-	options.stat.uid = true;
-	break;
-      }
-    case 'g':
-      {
-	options.stat.group = true;
-	break;
-      }
-    case 'G':
-      {
-	options.stat.gid = true;
-	break;
-      }
-    case 'p':
-    case 'P':
-      {
-	options.stat.perm = true;
-	break;
-      }
-    case 'i':
-      {
-	options.stat.inode = true;
-	break;
-      }
-    case 'l':
-      {
-	options.stat.hardlinks = true;
-	break;
-      }
-    case 'a':
-    case 'A':
-      {
-	options.stat.atime = true;
-	break;
-      }
-    case 'm':
-    case 'M':
-      {
-	options.stat.mtime = true;
-	break;
-      }
-    case 'c':
-    case 'C':
-      {
-	options.stat.ctime = true;
-	break;
-      }
-    default:
-      throw Option_Error();
-    }
-}
-
 void read_sort()
 {
-  for ( std::string::const_iterator it = options.sort.begin();
-	it != options.sort.end(); it++ )
-    set_stats(*it);
-
   // TODO building sort tree
-}
-
-void read_format()
-{
-  for ( std::string::const_iterator it = options.format.begin();
-	it != options.format.end(); it++ )
-    if ( *it == '%' )
-      {
-	if ( ++it != options.format.end() )
-	  set_stats( *it );
-	else
-	  throw Option_Error();
-      }
 }
 
 std::string masquerade(std::string input)
@@ -356,7 +208,6 @@ a atime      m mtime       c ctime")
       try
 	{
 	  read_sort();
-	  read_format();
 	}
       catch( Option_Error e )
 	{
