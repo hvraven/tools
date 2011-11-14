@@ -218,40 +218,41 @@ a atime      m mtime       c ctime")
       if (vm.count("sort"))
 	options.sorted = true;
 
-      /* reading options to structures */
-      try
+      try         /* checking for invalid arguments */
 	{
 	  read_sort();
-	}
-      catch( Option_Error e )
-	{
-	  std::cerr << "Invalid arguments" << std::endl;
-	  return 1;
-	}
 
-      /* splitting at begin for optimization */
-      if (vm.count("sort"))
-	{
-	  std::cout << "sorted check" << std::endl;
-	  return 0;
+	  /* splitting at begin for optimization */
+	  if (vm.count("sort"))
+	    {
+	      std::cout << "sorted check" << std::endl;
+	      return 0;
+	    }
+	  else // not sorted
+	    {
+	      filesystem::path p = vm["file"].as<std::string>();
+	      if ( filesystem::is_regular_file( p ) )
+		{
+		  struct stat tempstat;
+		  stat(p.c_str(), &tempstat);
+		  display_file( File(p,tempstat) );
+		  return 0;
+		}
+	      else if ( filesystem::is_directory(p) )
+		{
+		  list_content_unsorted(p, options.max_depth);
+		  return 0;
+		}
+	      else
+		return 1;
+	    }
 	}
-      else // not sorted
+      catch( Option_Error& e )
 	{
-	  filesystem::path p = vm["file"].as<std::string>();
-	  if ( filesystem::is_regular_file( p ) )
-	    {
-	      struct stat tempstat;
-	      stat(p.c_str(), &tempstat);
-	      display_file( File(p,tempstat) );
-	      return 0;
-	    }
-	  else if ( filesystem::is_directory(p) )
-	    {
-	      list_content_unsorted(p, options.max_depth);
-	      return 0;
-	    }
-	  else
-	    return 1;
+	  std::cerr << "Invalid option!"
+		    << generic
+		    << std::endl;
+	  return 1;
 	}
     }
   catch( std::exception& e )
