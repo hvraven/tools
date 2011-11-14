@@ -19,18 +19,26 @@ int main(int argc, char* argv[])
 {
   try
     {
-      program_options::options_description generic("Generic Options:");
+      program_options::options_description generic("Generic Options");
       generic.add_options()
-	("help,h", "print this message");
+	("help,h", "print this message")
+	("format,f", program_options::value<std::string>(), "output format\n%n filename      %N raw filename\n%b basename      %B raw basename\n%u user          %u uid\n%g group         %G gid\n%s size          %h human size\n%p modestring    %P octal mode\n%i inode number  %l number of hardlinks\n%e extension     %E name without extension\n%a iso atime     %A epoch atime\n%m iso mtime     %M epoch mtime\n%c iso ctime     %C epoch ctime\n%F indicator (*/=|)  %_ column alignment")
+	("sort,s", program_options::value<std::string>(),
+	 "sort the files in order of given following arguments\nn filename   b basename    s size\nu user       U uid         g group\ni inode      l number of hardlinks\ne extension  E name without extension\na atime      m mtime       c ctime")
+	("max-depth,m", program_options::value<int>(), "max depth (number of / in pathname allowed")
+	("exclude,x", program_options::value<std::string>(),
+	 "exclude GLOB (** for recursive *)");
 
-      program_options::options_description hidden("Hidden Options");
+      program_options::options_description hidden("");
       hidden.add_options()
 	("file", program_options::value<std::string>(), "file to stat");
 
       program_options::options_description cmdline_options;
       cmdline_options.add(generic).add(hidden);
 
-      program_options::options_description visible("Usage: fls [-x GLOB] [-f FMT] DIR");
+      // TODO Remove ':' from line
+      program_options::options_description visible
+	("Usage: fls [-x GLOB] [-f FMT] DIR");
       visible.add(generic);
 
       program_options::positional_options_description posdesc;
