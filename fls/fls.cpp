@@ -4,6 +4,20 @@
 
 using namespace boost;
 
+struct Options
+{
+  bool quiet;
+  int max_depth;
+
+  Options()
+    : quiet(false),
+      max_depth(-1)
+  {
+  }
+};
+
+Options options;
+
 void list_content( filesystem::path p, int sublevels )
 {
   try
@@ -19,7 +33,8 @@ void list_content( filesystem::path p, int sublevels )
     }
   catch (const filesystem::filesystem_error& ex)
     {
-      std::cerr << p << ": permission denied" << std::endl;
+      if ( ! options.quiet )
+	std::cerr << p << ": permission denied" << std::endl;
     }
 }
 
@@ -27,8 +42,6 @@ int main(int argc, char* argv[])
 {
   try
     {
-      int max_depth = -1;
-
       program_options::options_description generic("Usage: fls [-x GLOB] [-f FMT] DIR...");
       generic.add_options()
 	("help,h", "print this message")
@@ -54,9 +67,11 @@ i inode      l number of hardlinks\n\
 e extension  E name without extension\n\
 a atime      m mtime       c ctime")
 	("reverse,r", "reverse display order")
-	("max-depth,m", program_options::value<int>(&max_depth), "max depth")
+	("max-depth,m", program_options::value<int>(&options.max_depth),
+	 "max depth")
 	("exclude,x", program_options::value<std::string>(),
-	 "exclude GLOB (** for recursive *)");
+	 "exclude GLOB (** for recursive *)")
+	("quiet,q", "don't show trivial error messages");
 
       program_options::options_description hidden("");
       hidden.add_options()
@@ -80,6 +95,9 @@ a atime      m mtime       c ctime")
 	  return 1;
 	}
 
+      if (vm.count("quiet"))
+	options.quiet = true;
+
       if (vm.count("sort"))
 	{
 	  std::cout << "sorted check" << std::endl;
@@ -95,7 +113,7 @@ a atime      m mtime       c ctime")
 	    }
 	  else if ( filesystem::is_directory(p) )
 	    {
-	      list_content(p, max_depth);
+	      list_content(p, options.max_depth);
 	      return 0;
 	    }
 	  else
