@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
       program_options::options_description cmdline_options;
       cmdline_options.add(generic).add(hidden);
 
-      program_options::options_description visible("Supported options");
+      program_options::options_description visible("Usage: fls [-x GLOB] [-f FMT] DIR");
       visible.add(generic);
 
       program_options::positional_options_description posdesc;
