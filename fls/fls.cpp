@@ -1,14 +1,13 @@
 #include <iostream>
 #include <boost/filesystem.hpp>
 
-using namespace boost::filesystem;
-
-void list_content( path p )
+void list_content( boost::filesystem::path p )
 {
-  for ( directory_iterator dir(p); dir != directory_iterator(); dir++ )
+  for ( boost::filesystem::directory_iterator dir(p);
+	dir != boost::filesystem::directory_iterator(); dir++ )
     {
       std::cout << *dir << std::endl;
-      if ( is_directory(*dir) )
+      if ( boost::filesystem::is_directory(*dir) )
 	list_content( *dir );
     }
 }
@@ -21,15 +20,15 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  path p = argv[1];
+  boost::filesystem::path p = argv[1];
 
-  if ( is_regular_file( p ) )
+  if ( boost::filesystem::is_regular_file( p ) )
     {
       std::cout << p << " "
 		<< boost::filesystem::file_size(p) << '\n';
       return 0;
     }
-  else if ( is_directory(p) )
+  else if ( boost::filesystem::is_directory(p) )
     {
       list_content(p);
       return 0;
