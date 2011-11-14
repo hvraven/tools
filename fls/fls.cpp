@@ -8,27 +8,36 @@ struct Options
 {
   bool quiet;
   int max_depth;
+  std::string format;
+  std::string sort;
 
   Options()
     : quiet(false),
-      max_depth(-1)
+      max_depth(-1),
+      format(),
+      sort()
   {
   }
 };
 
 Options options;
 
-void list_content( filesystem::path p, int sublevels )
+void display_path( filesystem::path path )
+{
+  std::cout << path << std::endl;
+}
+
+void list_content_unsorted( filesystem::path p, int sublevels )
 {
   try
     {
       for ( filesystem::directory_iterator dir(p);
 	    dir != filesystem::directory_iterator(); dir++ )
 	{
-	  std::cout << *dir << std::endl;
+	  display_path(dir->path());
 	  if ( filesystem::is_directory(*dir) )
 	    if ( sublevels )
-	      list_content( *dir, sublevels - 1 );
+	      list_content_unsorted( *dir, sublevels - 1 );
 	}
     }
   catch (const filesystem::filesystem_error& ex)
@@ -98,6 +107,7 @@ a atime      m mtime       c ctime")
       if (vm.count("quiet"))
 	options.quiet = true;
 
+      /* splitting at begin for optimization */
       if (vm.count("sort"))
 	{
 	  std::cout << "sorted check" << std::endl;
@@ -108,12 +118,12 @@ a atime      m mtime       c ctime")
 	  filesystem::path p = vm["file"].as<std::string>();
 	  if ( filesystem::is_regular_file( p ) )
 	    {
-	      std::cout << p << std::endl;
+	      display_path( p );
 	      return 0;
 	    }
 	  else if ( filesystem::is_directory(p) )
 	    {
-	      list_content(p, options.max_depth);
+	      list_content_unsorted(p, options.max_depth);
 	      return 0;
 	    }
 	  else
