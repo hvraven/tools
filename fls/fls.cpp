@@ -44,6 +44,7 @@ struct Options
   bool sorted;
   std::string sort;
   std::string exclude;
+  bool reverse;
 
   Options()
     : quiet(false),
@@ -51,7 +52,8 @@ struct Options
       format("%p %l %u %g %h %M %N"),
       sorted(false),
       sort(),
-      exclude()
+      exclude(),
+      reverse(false)
   {
   }
 };
@@ -180,9 +182,8 @@ std::string permstring( const mode_t perm )
 std::string format_time( const time_t& time )
 {
   std::string work = ctime(&time);
-  for (unsigned int i = 0; work[i] != '\0'; i++)
-    if ( work[i] == '\n' )
-      work.erase(i,1);
+  work.erase(0,4);
+  work.erase(12, work.length() -12);
   return work;
 }
 
@@ -419,6 +420,9 @@ a atime      m mtime       c ctime")
 
       if (vm.count("sort"))
 	options.sorted = true;
+
+      if (vm.count("reverse"))
+	options.reverse = true;
 
       try         /* checking for invalid arguments */
 	{
