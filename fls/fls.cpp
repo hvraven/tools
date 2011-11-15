@@ -104,7 +104,7 @@ std::string human_size(int input)
       if (work < 1000)
 	{
 	  std::ostringstream output;
-	  if ( work < 10 )
+	  if ( work < 100 )
 	    output << std::setprecision(2);
 	  else
 	    output << std::setprecision(3);
