@@ -123,22 +123,21 @@ std::string fill( const std::string& input, unsigned int length )
 
 std::string print_file( File file )
 {
-  std::string work = options.format;
-  for (size_t pos = 0; work[pos] != '\0'; pos++)
+  std::string work;
+  for (size_t pos = 0; options.format[pos] != '\0'; pos++)
     {
-      if ( work[pos] == '%' )
+      if ( options.format[pos] == '%' )
 	{
-	  work.erase(pos, 2);
-	  switch ( work[++pos] )
+	  switch ( options.format[++pos] )
 	    {
 	    case 'n':
 	      {
-		work.insert(pos - 1, masquerade(file.path.string()));
+		work += masquerade(file.path.string());
 		break;
 	      }
 	    case 'N':
 	      {
-		work.insert(pos - 1, file.path.string());
+		work += file.path.string();
 		break;
 	      }
 	    case 'b':
@@ -149,7 +148,7 @@ std::string print_file( File file )
 		  if (temp[pos2] == '/')
 		    last = pos2;
 		temp.erase(0, last + 1);
-		work.insert(pos - 1, masquerade(temp));
+		work += masquerade(temp);
 		break;
 	      }
 	    case 'B':
@@ -160,7 +159,7 @@ std::string print_file( File file )
 		  if (temp[pos2] == '/')
 		    last = pos2;
 		temp.erase(0, last + 1);
-		work.insert(pos - 1, temp);
+		work += temp;
 		break;
 	      }
 	    case 'u':
@@ -170,7 +169,7 @@ std::string print_file( File file )
 	      }
 	    case 'U':
 	      {
-		work.insert(pos - 1, itoa(file.stat.st_uid,10));
+		work += itoa(file.stat.st_uid,10);
 		break;
 	      }
 	    case 'g':
@@ -180,21 +179,23 @@ std::string print_file( File file )
 	      }
 	    case 'G':
 	      {
-		work.insert(pos - 1, itoa(file.stat.st_gid,10));
+		work += itoa(file.stat.st_gid,10);
 		break;
 	      }
 	    case 's':
 	      {
-		work.insert(pos - 1, itoa(file.stat.st_size,10));
+		work += itoa(file.stat.st_size,10);
 		break;
 	      }
-	    case 'S':
+	    case 'h':
 	      {
-		work.insert(pos - 1, fill(human_size(file.stat.st_size),4));
+		work += fill(human_size(file.stat.st_size),4);
 		break;
 	      }
 	    }
 	}
+      else
+	work += options.format[pos];
     }
 
   return work;
