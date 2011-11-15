@@ -1,3 +1,5 @@
+/* TODO: Invalid Symlinks */
+
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -114,6 +116,66 @@ std::string human_size(int input)
     }
 }
 
+std::string permstring( const mode_t perm )
+{
+  std::string output = "----------";
+  /* file type */
+  if (perm & (1 << 15))
+    {
+      if (perm & (1 << 13))
+	output[0] = 'l';
+    }
+  else
+    {
+      if (perm & (1 << 13))
+	{
+	  if (perm & (1 << 14))
+	    output[0] = 'b';
+	  else
+	    output[0] = 'c';
+	}
+      if (perm & (1 << 14))
+	output[0] = 'd';
+    }
+  if (perm & (1 << 12)) output[0] = 'p';
+  /* user perm */
+  if (perm & (1 << 8) ) output[1] = 'r';
+  if (perm & (1 << 7) ) output[2] = 'w';
+  if (perm & (1 << 6) ) output[3] = 'x';
+  /* group perm */
+  if ( perm & (1 << 5) ) output[4] = 'r';
+  if ( perm & (1 << 4) ) output[5] = 'w';
+  if ( perm & (1 << 3) ) output[6] = 'x';
+  /* other perm */
+  if ( perm & (1 << 2) ) output[7] = 'r';
+  if ( perm & (1 << 1) ) output[8] = 'w';
+  if ( perm & 1 ) output[9] = 'x';
+  /* other bits */
+  if ( perm & (1 << 9) )
+    {
+      if ( perm & 1 )
+	output[9] = 't';
+      else
+	output[9] = 'T';
+    }
+  if ( perm & (1 << 10) )
+    {
+      if ( perm & (1 << 3) )
+	output[6] = 's';
+      else
+	output[6] = 'S';
+    }
+  if ( perm & (1 << 11) )
+    {
+      if ( perm & (1 << 6) )
+	output[3] = 's';
+      else
+	output[3] = 'S';
+    }
+
+  return output;
+}
+
 std::string fill( const std::string& input, unsigned int length )
 {
   const int missing = length - input.length();
@@ -196,6 +258,16 @@ std::string print_file( File file )
 		work += fill(human_size(file.stat.st_size),4);
 		break;
 	      }
+	    case 'p':
+	      {
+		work += permstring(file.stat.st_mode);
+		break;
+	      }
+	    case 'P':
+	      {
+		work += itoa(file.stat.st_mode,8);
+		break;
+	      }
 	    }
 	}
       else
@@ -218,7 +290,7 @@ void list_content_unsorted( filesystem::path p, int sublevels )
 	    dir != filesystem::directory_iterator(); dir++ )
 	{
 	  struct stat tempstat;
-	  stat( dir->path().c_str(), &tempstat );
+	  lstat( dir->path().c_str(), &tempstat );
 	  display_file( File(dir->path(), tempstat) );
 	  if ( filesystem::is_directory(*dir) )
 	    if ( sublevels )
@@ -314,7 +386,7 @@ a atime      m mtime       c ctime")
 	      if ( filesystem::is_regular_file( p ) )
 		{
 		  struct stat tempstat;
-		  stat(p.c_str(), &tempstat);
+		  lstat(p.c_str(), &tempstat);
 		  display_file( File(p,tempstat) );
 		  return 0;
 		}
