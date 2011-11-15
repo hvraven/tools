@@ -5,6 +5,8 @@
 #include <boost/program_options.hpp>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <pwd.h>
+#include <grp.h>
 
 using namespace boost;
 
@@ -164,7 +166,8 @@ std::string print_file( File file )
 	      }
 	    case 'u':
 	      {
-		// TODO
+		struct passwd* user = getpwuid(file.stat.st_uid);
+		work += user->pw_name;
 		break;
 	      }
 	    case 'U':
@@ -174,7 +177,8 @@ std::string print_file( File file )
 	      }
 	    case 'g':
 	      {
-		// TODO
+		struct group* group = getgrgid(file.stat.st_gid);
+		work += group->gr_name;
 		break;
 	      }
 	    case 'G':
