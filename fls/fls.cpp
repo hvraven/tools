@@ -3,8 +3,10 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <queue>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <boost/thread.hpp>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pwd.h>
@@ -45,6 +47,7 @@ struct Options
   std::string sort;
   std::string exclude;
   bool reverse;
+  bool end;
 
   Options()
     : quiet(false),
@@ -53,12 +56,15 @@ struct Options
       sorted(false),
       sort(),
       exclude(),
-      reverse(false)
+      reverse(false),
+      end(false)
   {
   }
 };
 
 Options options;
+
+std::queue<File> file_queue;
 
 void read_sort()
 {
@@ -333,6 +339,30 @@ inline void display_file( File file )
   std::cout << print_file( file ) << std::endl;
 }
 
+void unsorted_output()
+{
+  for(;;)
+    {
+      if ( ! file_queue.empty() )
+	{
+	  File work = file_queue.front();
+	  file_queue.pop();
+	  std::cout << print_file( work ) << std::endl;
+	}
+      else
+	{
+	  if ( options.end )
+	    break;
+	  this_thread::sleep(posix_time::milliseconds(1));
+	}
+    }
+}
+
+void push_to_file_queue( File& file )
+{
+  file_queue.push( file );
+}
+
 void list_content_unsorted( filesystem::path p, int sublevels )
 {
   try
@@ -446,7 +476,10 @@ a atime      m mtime       c ctime")
 		}
 	      else if ( filesystem::is_directory(p) )
 		{
+		  thread output(unsorted_output);
 		  list_content_unsorted(p, options.max_depth);
+		  options.end = true;
+		  output.join();
 		  return 0;
 		}
 	      else
