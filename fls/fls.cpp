@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <pwd.h>
 #include <grp.h>
+#include <ctime>
 
 using namespace boost;
 
@@ -176,6 +177,15 @@ std::string permstring( const mode_t perm )
   return output;
 }
 
+std::string format_time( const time_t& time )
+{
+  std::string work = ctime(&time);
+  for (unsigned int i = 0; work[i] != '\0'; i++)
+    if ( work[i] == '\n' )
+      work.erase(i,1);
+  return work;
+}
+
 std::string fill( const std::string& input, unsigned int length )
 {
   const int missing = length - input.length();
@@ -266,6 +276,46 @@ std::string print_file( File file )
 	    case 'P':
 	      {
 		work += itoa(file.stat.st_mode,8);
+		break;
+	      }
+	    case 'i':
+	      {
+		work += itoa(file.stat.st_ino,10);
+		break;
+	      }
+	    case 'l':
+	      {
+		work += itoa(file.stat.st_nlink,10);
+		break;
+	      }
+	    case 'a':
+	      {
+		work += itoa(file.stat.st_atime,10);
+		break;
+	      }
+	    case 'A':
+	      {
+		work += format_time(file.stat.st_atime);
+		break;
+	      }
+	    case 'm':
+	      {
+		work += itoa(file.stat.st_mtime,10);
+		break;
+	      }
+	    case 'M':
+	      {
+		work += format_time(file.stat.st_mtime);
+		break;
+	      }
+	    case 'c':
+	      {
+		work += itoa(file.stat.st_ctime,10);
+		break;
+	      }
+	    case 'C':
+	      {
+		work += format_time(file.stat.st_ctime);
 		break;
 	      }
 	    }
