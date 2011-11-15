@@ -1,5 +1,6 @@
 #include <iostream>
-#include <algorithm>
+#include <sstream>
+#include <iomanip>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <sys/types.h>
@@ -76,6 +77,50 @@ std::string masquerade(std::string input)
   return output;
 }
 
+std::string itoa(int value, int base)
+{
+  std::ostringstream result;
+  result << std::setbase(base) << value;
+  return result.str();
+}
+
+std::string human_size(int input)
+{
+  if (input <= 1024)
+    {
+      std::ostringstream output;
+      output << input;
+      return output.str();
+    }
+
+  const std::string postfix = "KMGTPE";
+  double work = ((double)input) / 1024;
+  for ( int postfix_count = 0; ; postfix_count++ )
+    {
+      if (work < 1000)
+	{
+	  std::ostringstream output;
+	  if ( work < 10 )
+	    output << std::setprecision(2);
+	  else
+	    output << std::setprecision(3);
+	  output << work
+		 << postfix[postfix_count];
+	  return output.str();
+	}
+      work /= 1024;
+    }
+}
+
+std::string fill( const std::string& input, unsigned int length )
+{
+  const int missing = length - input.length();
+  std::string work;
+  for (int i = 0; i < missing; i++)
+    work += ' ';
+  return work + input;
+}
+
 std::string print_file( File file )
 {
   std::string work = options.format;
@@ -116,6 +161,36 @@ std::string print_file( File file )
 		    last = pos2;
 		temp.erase(0, last + 1);
 		work.insert(pos - 1, temp);
+		break;
+	      }
+	    case 'u':
+	      {
+		// TODO
+		break;
+	      }
+	    case 'U':
+	      {
+		work.insert(pos - 1, itoa(file.stat.st_uid,10));
+		break;
+	      }
+	    case 'g':
+	      {
+		// TODO
+		break;
+	      }
+	    case 'G':
+	      {
+		work.insert(pos - 1, itoa(file.stat.st_gid,10));
+		break;
+	      }
+	    case 's':
+	      {
+		work.insert(pos - 1, itoa(file.stat.st_size,10));
+		break;
+	      }
+	    case 'S':
+	      {
+		work.insert(pos - 1, fill(human_size(file.stat.st_size),4));
 		break;
 	      }
 	    }
