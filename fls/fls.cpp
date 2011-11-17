@@ -1,9 +1,8 @@
-/* TODO: Invalid Symlinks */
-
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 #include <queue>
+#include <map>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>
@@ -52,7 +51,7 @@ struct Options
   Options()
     : quiet(false),
       max_depth(-1),
-      format("%p %l %u %g %h %M %N"),
+      format("%p %l %u %g %h %M %B"),
       sorted(false),
       sort(),
       exclude(),
@@ -65,6 +64,18 @@ struct Options
 Options options;
 
 std::queue<File> file_queue;
+
+class Sort_map
+{
+public:
+  // iterator
+  // add sort key
+  // add element
+
+private:
+  // sort keys
+  // map tree
+};
 
 void read_sort()
 {
