@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <queue>
 #include <map>
+#include <vector>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>
@@ -65,17 +66,297 @@ Options options;
 
 std::queue<File> file_queue;
 
-class Sort_map
+enum Sort_Option_Token
+{
+  FILENAME,
+  BASENAME,
+  SIZE,
+  USER,
+  UID,
+  GROUP,
+  GID,
+  INODE,
+  HARDLINKS,
+  EXTENSION,
+  NOTEXTENSION,
+  ATIME,
+  MTIME,
+  CTIME
+};
+
+/* switch functions for finding matching stat in Sort and Sort_End */
+std::string switch_string( const File& file, const Sort_Option_Token token )
+{
+  switch ( token )
+    {
+    case FILENAME:
+      return file.path.string();
+    case BASENAME:
+      return file.path.filename().string();
+    case USER:
+      return getpwuid(file.stat.st_uid)->pw_name;
+    case GROUP:
+      return getgrgid(file.stat.st_gid)->gr_name;
+    case EXTENSION:
+      return file.path.extension().string();
+    case NOTEXTENSION:
+      return file.path.stem().string();
+    default:
+      std::cerr << "Invalid element in Sort<std::string>::get_element\n";
+    }
+  return "";
+}
+
+/* uid_t and gid_t are unsigned int */
+unsigned int switch_unsigned_int( const File& file,
+                                  const Sort_Option_Token token )
+{
+  switch ( token )
+    {
+    case UID:
+      return file.stat.st_uid;
+    case GID:
+      return file.stat.st_gid;
+    default:
+      std::cerr << "Invalid element in Sort<unsigned int>::get_element\n";
+    }
+  return 0;
+}
+
+/* nlink_t and ino_t are long unsigned int */
+long unsigned int switch_long_unsigned_int( const File& file,
+                                            const Sort_Option_Token token )
+{
+  switch ( token )
+    {
+    case HARDLINKS:
+      return file.stat.st_nlink;
+    case INODE:
+      return file.stat.st_ino;
+    default:
+      std::cerr << "Invalid element in Sort<long unsigned int>::get_element\n";
+    }
+  return 0;
+}
+
+/* off_t and time_t are long int */
+long int switch_long_int( const File& file,
+                          const Sort_Option_Token token )
+{
+  switch ( token )
+    {
+    case SIZE:
+      return file.stat.st_size;
+    case ATIME:
+      return file.stat.st_atime;
+    case MTIME:
+      return file.stat.st_mtime;
+    case CTIME:
+      return file.stat.st_ctime;
+    default:
+      std::cerr << "Invalid element in Sort<long int>::get_element\n";
+    }
+  return 0;
+}
+
+typedef std::vector< Sort_Option_Token > Sort_Map;
+
+Sort_Map sort_map;
+
+class Sort_Base
 {
 public:
-  // iterator
-  // add sort key
-  // add element
+  virtual void add( const File&, Sort_Map::const_iterator ) = 0;
+  virtual void print() = 0;
+
+protected:
+  Sort_Base* next_sort_pointer( Sort_Map::const_iterator );
+};
+
+
+template < typename T >
+class Sort : public Sort_Base
+{
+public:
+  virtual void add( const File&, Sort_Map::const_iterator );
+  virtual void print();
 
 private:
-  // sort keys
-  // map tree
+  std::map< T, Sort_Base* > sort_map;
+
+  T get_element( const File&, Sort_Map::const_iterator );
 };
+
+template <typename T>
+void Sort<T>::add( const File& file, Sort_Map::const_iterator pos )
+{
+  const T element = get_element( file, pos );
+  if ( ! sort_map[ element ] )
+    sort_map[ element ] = next_sort_pointer( pos + 1 );
+
+  sort_map[ element ]->add( file, pos + 1 );
+}
+
+template < typename T >
+void Sort<T>::print()
+{
+  for ( typename std::map<T,Sort_Base*>::const_iterator it = sort_map.begin() ;
+        it != sort_map.end() ; it++ )
+    it->second->print();
+}
+
+template<>
+inline std::string
+Sort<std::string>::get_element( const File& file,
+                                Sort_Map::const_iterator pos )
+{
+  return switch_string( file, *pos );
+}
+
+template<>
+inline unsigned int
+Sort<unsigned int>::get_element( const File& file,
+                                 Sort_Map::const_iterator pos )
+{
+  return switch_unsigned_int( file, *pos );
+}
+
+template<>
+inline long unsigned int
+Sort<long unsigned int>::get_element( const File& file,
+                                      Sort_Map::const_iterator pos )
+{
+  return switch_long_unsigned_int( file, *pos );
+}
+
+template<>
+inline long int
+Sort<long int>::get_element( const File& file,
+                             Sort_Map::const_iterator pos )
+{
+  return switch_long_int( file, *pos );
+}
+
+std::string print_file( const File& file );
+
+template < typename T >
+class Sort_End : public Sort_Base
+{
+public:
+  virtual void add( const File&, Sort_Map::const_iterator );
+  virtual void print();
+
+private:
+  std::multimap< T, std::string > sort_map;
+  T get_element( const File&, Sort_Map::const_iterator );
+};
+
+template <typename T>
+inline void Sort_End<T>::add( const File& file, Sort_Map::const_iterator pos )
+{
+  const T element = get_element( file, pos );
+  sort_map.insert( std::pair<T, std::string>(element, print_file( file )) );
+}
+
+template < typename T >
+void Sort_End<T>::print()
+{
+  for ( typename std::multimap<T,std::string>::const_iterator it
+          = sort_map.begin() ; it != sort_map.end() ; it++ )
+    std::cout << it->second << std::endl;
+}
+
+template<>
+inline std::string
+Sort_End<std::string>::get_element( const File& file,
+                                    Sort_Map::const_iterator pos )
+{
+  return switch_string( file, *pos );
+}
+
+template<>
+inline unsigned int
+Sort_End<unsigned int>::get_element( const File& file,
+                                     Sort_Map::const_iterator pos )
+{
+  return switch_unsigned_int( file, *pos );
+}
+
+template<>
+inline long unsigned int
+Sort_End<long unsigned int>::get_element( const File& file,
+                                          Sort_Map::const_iterator pos )
+{
+  return switch_long_unsigned_int( file, *pos );
+}
+
+template<>
+inline long int
+Sort_End<long int>::get_element( const File& file,
+                                 Sort_Map::const_iterator pos )
+{
+  return switch_long_int( file, *pos );
+}
+
+Sort_Base* Sort_Base::next_sort_pointer( Sort_Map::const_iterator position )
+{
+  // last sort option
+  if ( position == sort_map.end() - 1 )
+    {
+      switch ( *position )
+        {
+        case FILENAME:
+        case BASENAME:
+        case EXTENSION:
+        case NOTEXTENSION:
+        case USER:
+        case GROUP:
+          return new Sort_End< std::string >;
+        case SIZE:
+          return new Sort_End< off_t >;
+        case UID:
+          return new Sort_End< uid_t >;
+        case GID:
+          return new Sort_End< gid_t >;
+        case INODE:
+          return new Sort_End< ino_t >;
+        case HARDLINKS:
+          return new Sort_End< nlink_t >;
+        case ATIME:
+        case MTIME:
+        case CTIME:
+          return new Sort_End< time_t >;
+        }
+    }
+  else
+    {
+      switch ( *position )
+        {
+        case FILENAME:
+        case BASENAME:
+        case EXTENSION:
+        case NOTEXTENSION:
+        case USER:
+        case GROUP:
+          return new Sort< std::string >;
+        case SIZE:
+          return new Sort< off_t >;
+        case UID:
+          return new Sort< uid_t >;
+        case GID:
+          return new Sort< gid_t >;
+        case INODE:
+          return new Sort< ino_t >;
+        case HARDLINKS:
+          return new Sort< nlink_t >;
+        case ATIME:
+        case MTIME:
+        case CTIME:
+          return new Sort< time_t >;
+        }
+    }
+  return 0;
+}
 
 void read_sort()
 {
@@ -213,7 +494,7 @@ std::string fill( const std::string& input, unsigned int length )
   return work + input;
 }
 
-std::string print_file( File file )
+std::string print_file( const File& file )
 {
   std::string work;
   for (size_t pos = 0; options.format[pos] != '\0'; pos++)
@@ -234,24 +515,12 @@ std::string print_file( File file )
 	      }
 	    case 'b':
 	      {
-		std::string temp = file.path.string();
-		size_t last = 0;
-		for (size_t pos2 = 0; temp[pos2] != '\0'; pos2++)
-		  if (temp[pos2] == '/')
-		    last = pos2;
-		temp.erase(0, last + 1);
-		work += masquerade(temp);
+		work += masquerade(file.path.filename().string());
 		break;
 	      }
-	    case 'B':
-	      {
-		std::string temp = file.path.string();
-		size_t last = 0;
-		for (size_t pos2 = 0; temp[pos2] != '\0'; pos2++)
-		  if (temp[pos2] == '/')
-		    last = pos2;
-		temp.erase(0, last + 1);
-		work += temp;
+            case 'B':
+              {
+		work += file.path.filename().string();
 		break;
 	      }
 	    case 'u':
@@ -306,6 +575,16 @@ std::string print_file( File file )
 		work += itoa(file.stat.st_nlink,10);
 		break;
 	      }
+            case 'e':
+              {
+                work += file.path.extension().string();
+                break;
+              }
+            case 'E':
+              {
+                work += file.path.stem().string();
+                break;
+              }
 	    case 'a':
 	      {
 		work += itoa(file.stat.st_atime,10);
@@ -345,7 +624,7 @@ std::string print_file( File file )
   return work;
 }
 
-inline void display_file( File file )
+inline void display_file( const File& file )
 {
   std::cout << print_file( file ) << std::endl;
 }
