@@ -89,6 +89,7 @@ struct Options
 Options options;
 
 std::queue<File> file_queue;
+mutex file_queue_mutex;
 
 /* switch functions for finding matching stat in Sort and Sort_End */
 std::string switch_string( const File& file, const Sort_Option_Token token )
@@ -708,23 +709,32 @@ inline void display_file( const File& file )
 
 void process_output()
 {
-  for(;;)
+  try
     {
-      if ( ! file_queue.empty() )
-	{
-	  File work = file_queue.front();
-	  file_queue.pop();
-          if ( options.sorted )
-            options.sorted->add(work, options.sort_map.begin());
+      for(;;)
+        {
+          if ( ! file_queue.empty() )
+            {
+              file_queue_mutex.lock();
+              File work = file_queue.front();
+              file_queue.pop();
+              file_queue_mutex.unlock();
+              if ( options.sorted )
+                options.sorted->add(work, options.sort_map.begin());
+              else
+                std::cout << print_file( work ) << std::endl;
+            }
           else
-            std::cout << print_file( work ) << std::endl;
-	}
-      else
-	{
-	  if ( options.end )
-	    break;
-	  this_thread::sleep(posix_time::milliseconds(1));
-	}
+            {
+              if ( options.end )
+                break;
+              this_thread::sleep(posix_time::milliseconds(1));
+            }
+        }
+    }
+  catch( std::exception& e )
+    {
+      std::cerr << e.what() << std::endl;
     }
 }
 
@@ -742,7 +752,10 @@ void list_content_unsorted( filesystem::path p, int sublevels )
 	{
 	  struct stat tempstat;
 	  lstat( dir->path().c_str(), &tempstat );
-          file_queue.push(File(dir->path(), tempstat) );
+          const File temp(dir->path(), tempstat);
+          file_queue_mutex.lock();
+          file_queue.push( temp );
+          file_queue_mutex.unlock();
       //display_file( File(dir->path(), tempstat) );
 	  if ( filesystem::is_directory(*dir) )
 	    if ( sublevels )
