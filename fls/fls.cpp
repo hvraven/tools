@@ -56,6 +56,8 @@ enum Sort_Option_Token
   CTIME
 };
 
+class Sort_Base;
+
 typedef std::vector< Sort_Option_Token > Sort_Map;
 
 struct Options
@@ -63,7 +65,7 @@ struct Options
   bool quiet;
   int max_depth;
   std::string format;
-  bool sorted;
+  Sort_Base* sorted;
   std::string sort;
   std::string exclude;
   bool reverse;
@@ -73,7 +75,7 @@ struct Options
   Options()
     : quiet(false),
       max_depth(-1),
-      format("%p %l %u %g %h %M %B"),
+      format("%p %l %u %g %h %M %N"),
       sorted(false),
       sort(),
       exclude(),
@@ -168,11 +170,9 @@ class Sort_Base
 public:
   virtual void add( const File&, Sort_Map::const_iterator ) = 0;
   virtual void print() = 0;
-
-protected:
-  Sort_Base* next_sort_pointer( Sort_Map::const_iterator );
 };
 
+Sort_Base* next_sort_pointer( Sort_Map::const_iterator position );
 
 template < typename T >
 class Sort : public Sort_Base
@@ -298,7 +298,7 @@ Sort_End<long int>::get_element( const File& file,
   return switch_long_int( file, *pos );
 }
 
-Sort_Base* Sort_Base::next_sort_pointer( Sort_Map::const_iterator position )
+Sort_Base* next_sort_pointer( Sort_Map::const_iterator position )
 {
   // last sort option
   if ( position == options.sort_map.end() - 1 )
@@ -434,7 +434,10 @@ void read_sort()
           options.sort_map.push_back( CTIME );
           continue;
         }
+      default:
+        throw Option_Error();
       }
+  options.sorted = next_sort_pointer(options.sort_map.begin());
 }
 
 std::string masquerade(std::string input)
@@ -703,7 +706,7 @@ inline void display_file( const File& file )
   std::cout << print_file( file ) << std::endl;
 }
 
-void unsorted_output()
+void process_output()
 {
   for(;;)
     {
@@ -711,7 +714,10 @@ void unsorted_output()
 	{
 	  File work = file_queue.front();
 	  file_queue.pop();
-	  std::cout << print_file( work ) << std::endl;
+          if ( options.sorted )
+            options.sorted->add(work, options.sort_map.begin());
+          else
+            std::cout << print_file( work ) << std::endl;
 	}
       else
 	{
@@ -736,7 +742,8 @@ void list_content_unsorted( filesystem::path p, int sublevels )
 	{
 	  struct stat tempstat;
 	  lstat( dir->path().c_str(), &tempstat );
-	  display_file( File(dir->path(), tempstat) );
+          file_queue.push(File(dir->path(), tempstat) );
+      //display_file( File(dir->path(), tempstat) );
 	  if ( filesystem::is_directory(*dir) )
 	    if ( sublevels )
 	      list_content_unsorted( *dir, sublevels - 1 );
@@ -812,45 +819,36 @@ a atime      m mtime       c ctime")
       if (vm.count("quiet"))
 	options.quiet = true;
 
-      if (vm.count("sort"))
-        options.sorted = true;
+      if ( options.sort != "" )
+        read_sort();
 
       if (vm.count("reverse"))
 	options.reverse = true;
 
       try         /* checking for invalid arguments */
 	{
-          if ( options.sorted )
-            read_sort();
-
-	  /* splitting at begin for optimization */
-	  if (vm.count("sort"))
-	    {
-	      std::cout << "sorted check" << std::endl;
-	      return 0;
+          filesystem::path p = vm["file"].as<std::string>();
+          if ( filesystem::is_regular_file( p ) )
+            {
+              struct stat tempstat;
+              lstat(p.c_str(), &tempstat);
+              display_file( File(p,tempstat) );
+              return 0;
+            }
+          else if ( filesystem::is_directory(p) )
+            {
+              thread output(process_output);
+              list_content_unsorted(p, options.max_depth);
+              std::cout << "reading done" << std::endl;
+              options.end = true;
+              output.join();
+              if ( options.sorted )
+                options.sorted->print();
+              return 0;
+            }
+          else
+            return 1;
 	    }
-	  else // not sorted
-	    {
-	      filesystem::path p = vm["file"].as<std::string>();
-	      if ( filesystem::is_regular_file( p ) )
-		{
-		  struct stat tempstat;
-		  lstat(p.c_str(), &tempstat);
-		  display_file( File(p,tempstat) );
-		  return 0;
-		}
-	      else if ( filesystem::is_directory(p) )
-		{
-		  thread output(unsorted_output);
-		  list_content_unsorted(p, options.max_depth);
-		  options.end = true;
-		  output.join();
-		  return 0;
-		}
-	      else
-		return 1;
-	    }
-	}
       catch( Option_Error& e )
 	{
 	  std::cerr << "Invalid option!"
