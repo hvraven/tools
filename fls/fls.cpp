@@ -38,34 +38,6 @@ struct File
   }
 };
 
-struct Options
-{
-  bool quiet;
-  int max_depth;
-  std::string format;
-  bool sorted;
-  std::string sort;
-  std::string exclude;
-  bool reverse;
-  bool end;
-
-  Options()
-    : quiet(false),
-      max_depth(-1),
-      format("%p %l %u %g %h %M %B"),
-      sorted(false),
-      sort(),
-      exclude(),
-      reverse(false),
-      end(false)
-  {
-  }
-};
-
-Options options;
-
-std::queue<File> file_queue;
-
 enum Sort_Option_Token
 {
   FILENAME,
@@ -83,6 +55,38 @@ enum Sort_Option_Token
   MTIME,
   CTIME
 };
+
+typedef std::vector< Sort_Option_Token > Sort_Map;
+
+struct Options
+{
+  bool quiet;
+  int max_depth;
+  std::string format;
+  bool sorted;
+  std::string sort;
+  std::string exclude;
+  bool reverse;
+  bool end;
+  Sort_Map sort_map;
+
+  Options()
+    : quiet(false),
+      max_depth(-1),
+      format("%p %l %u %g %h %M %B"),
+      sorted(false),
+      sort(),
+      exclude(),
+      reverse(false),
+      end(false),
+      sort_map()
+  {
+  }
+};
+
+Options options;
+
+std::queue<File> file_queue;
 
 /* switch functions for finding matching stat in Sort and Sort_End */
 std::string switch_string( const File& file, const Sort_Option_Token token )
@@ -158,10 +162,6 @@ long int switch_long_int( const File& file,
     }
   return 0;
 }
-
-typedef std::vector< Sort_Option_Token > Sort_Map;
-
-Sort_Map sort_map;
 
 class Sort_Base
 {
@@ -301,7 +301,7 @@ Sort_End<long int>::get_element( const File& file,
 Sort_Base* Sort_Base::next_sort_pointer( Sort_Map::const_iterator position )
 {
   // last sort option
-  if ( position == sort_map.end() - 1 )
+  if ( position == options.sort_map.end() - 1 )
     {
       switch ( *position )
         {
@@ -360,7 +360,81 @@ Sort_Base* Sort_Base::next_sort_pointer( Sort_Map::const_iterator position )
 
 void read_sort()
 {
-  // TODO building sort tree
+  for ( std::string::const_iterator it = options.sort.begin() ;
+        it != options.sort.end() ; it++ )
+    switch ( *it )
+      {
+      case 'n':
+        {
+          options.sort_map.push_back( FILENAME );
+          continue;
+        }
+      case 'b':
+        {
+          options.sort_map.push_back( BASENAME );
+          continue;
+        }
+      case 's':
+        {
+          options.sort_map.push_back( SIZE );
+          continue;
+        }
+      case 'u':
+        {
+          options.sort_map.push_back( USER );
+          continue;
+        }
+      case 'U':
+        {
+          options.sort_map.push_back( UID );
+          continue;
+        }
+      case 'g':
+        {
+          options.sort_map.push_back( GROUP );
+          continue;
+        }
+      case 'G':
+        {
+          options.sort_map.push_back( GID );
+          continue;
+        }
+      case 'i':
+        {
+          options.sort_map.push_back( INODE );
+          continue;
+        }
+      case 'l':
+        {
+          options.sort_map.push_back( HARDLINKS );
+          continue;
+        }
+      case 'e':
+        {
+          options.sort_map.push_back( EXTENSION );
+          continue;
+        }
+      case 'E':
+        {
+          options.sort_map.push_back( NOTEXTENSION );
+          continue;
+        }
+      case 'a':
+        {
+          options.sort_map.push_back( ATIME );
+          continue;
+        }
+      case 'm':
+        {
+          options.sort_map.push_back( MTIME );
+          continue;
+        }
+      case 'c':
+        {
+          options.sort_map.push_back( CTIME );
+          continue;
+        }
+      }
 }
 
 std::string masquerade(std::string input)
@@ -739,14 +813,15 @@ a atime      m mtime       c ctime")
 	options.quiet = true;
 
       if (vm.count("sort"))
-	options.sorted = true;
+        options.sorted = true;
 
       if (vm.count("reverse"))
 	options.reverse = true;
 
       try         /* checking for invalid arguments */
 	{
-	  read_sort();
+          if ( options.sorted )
+            read_sort();
 
 	  /* splitting at begin for optimization */
 	  if (vm.count("sort"))
