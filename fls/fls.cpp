@@ -166,7 +166,7 @@ long int switch_long_int( const File& file,
   return 0;
 }
 
-class Sort_Base
+class Sort_Base : public mutex
 {
 public:
   virtual void add( const File&, Sort_Map::const_iterator ) = 0;
@@ -193,7 +193,11 @@ void Sort<T>::add( const File& file, Sort_Map::const_iterator pos )
 {
   const T element = get_element( file, pos );
   if ( ! sort_map[ element ] )
-    sort_map[ element ] = next_sort_pointer( pos + 1 );
+    {
+      lock();
+      sort_map[ element ] = next_sort_pointer( pos + 1 );
+      unlock();
+    }
 
   sort_map[ element ]->add( file, pos + 1 );
 }
@@ -256,7 +260,9 @@ template <typename T>
 inline void Sort_End<T>::add( const File& file, Sort_Map::const_iterator pos )
 {
   const T element = get_element( file, pos );
+  lock();
   sort_map.insert( std::pair<T, std::string>(element, print_file( file )) );
+  unlock();
 }
 
 template < typename T >
