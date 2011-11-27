@@ -1,0 +1,5 @@
+fls is a tiny tool wich tries to combine ls and find in one tool. The advantage of this is the ability to sort the output by file attributes while the output can be formated independently.
+
+this fls is a c++ remake of the original ruby version from Christian Neukirchen.
+
+The boost.m4 autoconf macros used by fls can be found here: https://github.com/tsuna/boost.m4 and are distributed under a modified GPLv3 (see license on github)
